@@ -79,4 +79,6 @@ python evaluate_f1_agnostic.py \
   --ref example_data/test.short.ref.txt
 ```
 
+### Git LFS
 
+Repozytorium korzysta z **Git LFS** do przechowywania większych plików (np. w `train_qlora/`).
