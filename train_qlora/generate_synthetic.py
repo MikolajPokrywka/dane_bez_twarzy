@@ -28,10 +28,9 @@ def create_synthetic_prompt(template_text: str) -> str:
     """
     system_message = (
         "Jesteś asystentem generującym dane syntetyczne po polsku. "
-        "Dostajesz szablon z nawiasami klamrowymi (np. [name], [surname], [pesel], [address]) "
+        "Dostajesz szablon z nawiasami klamrowymi (np. [name], [surname], [pesel], [address], [email], [city] itp.) "
         "i masz go uzupełnić fikcyjnymi, ale realistycznymi danymi osobowymi. "
         "Zachowaj strukturę zdania, zastąp tylko nawiasy klamrowe konkretnymi wartościami. "
-        "Nie używaj prawdziwych danych żadnej istniejącej osoby – traktuj wszystko jako zmyślone przykłady."
     )
 
     prompt = f"""<|system|>
@@ -78,7 +77,7 @@ def generate_synthetic_texts(
     llm: LLM,
     templates: List[str],
     adapter_path: str | None = None,
-    temperature: float = 0.3,
+    temperature: float = 0.0,
     top_p: float = 0.9,
     max_tokens: int = 256,
     repetition_penalty: float = 1.05,
