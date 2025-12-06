@@ -37,4 +37,46 @@ python evaluate_f1_agnostic.py --pred example_data/test.short.pred.txt --ref exa
 streamlit run compare_anonymization.py
 ```
 
+### Hybrydowe podejście: model QLoRA + reguły (regex)
+
+Możesz też skorzystać z **hybrydowego podejścia**, w którym:
+- najpierw generujesz anonimizację modelem (PLLuM + adapter QLoRA),
+- a następnie przepuszczasz wynik przez skrypt `anonymize.py`, który stosuje reguły regex do dodatkowego „doczyszczenia” i ujednolicenia znaczników.
+
+1. **Szybka anonimizacja modelem z adapterem QLoRA (vLLM):**
+
+Przykład (krótki plik wejściowy w `example_data/`):
+
+```bash
+cd train_qlora
+
+python inference_vllm.py \
+  --input_file ../example_data/test.short.in.txt \
+  --output_file ../example_data/test.short.pred.txt \
+  --batch_size 32 \
+  --adapter qlora_checkpoints/checkpoint-100
+```
+
+2. **(Opcjonalnie) Dodatkowe reguły regex (`anonymize.py`):**
+
+Po wygenerowaniu `test.short.pred.txt` modelem możesz uruchomić drugi etap anonimizacji,
+który zastosuje reguły regex z pliku `anonymize.py` do doprecyzowania i ujednolicenia
+znaczników w wyjściu modelu:
+
+```bash
+cd ..
+
+python anonymize.py \
+  --input example_data/test.short.pred.txt \
+  --output example_data/test.short.regex.txt
+```
+
+Następnie możesz ocenić wynik hybrydowy:
+
+```bash
+python evaluate_f1_agnostic.py \
+  --pred example_data/test.short.regex.txt \
+  --ref example_data/test.short.ref.txt
+```
+
 
