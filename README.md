@@ -49,7 +49,9 @@ Przykład (krótki plik wejściowy w `example_data/`):
 
 ```bash
 cd train_qlora && unzip lora_2e.zip
-
+cd ..
+```
+```bash
 python train_qlora/inference_vllm.py \
     --input_file example_data/test.short.in.txt \
     --output_file output.vllm.txt \
