@@ -48,13 +48,13 @@ Możesz też skorzystać z **hybrydowego podejścia**, w którym:
 Przykład (krótki plik wejściowy w `example_data/`):
 
 ```bash
-cd train_qlora
+cd train_qlora && unzip lora_2e.zip
 
-python inference_vllm.py \
-  --input_file ../example_data/test.short.in.txt \
-  --output_file ../example_data/test.short.pred.txt \
-  --batch_size 32 \
-  --adapter qlora_checkpoints/checkpoint-100
+python train_qlora/inference_vllm.py \
+    --input_file example_data/test.short.in.txt \
+    --output_file output.vllm.txt \
+    --batch_size 32 \
+    --adapter train_qlora/qlora_output 
 ```
 
 2. **(Opcjonalnie) Dodatkowe reguły regex (`anonymize.py`):**
@@ -64,11 +64,7 @@ który zastosuje reguły regex z pliku `anonymize.py` do doprecyzowania i ujedno
 znaczników w wyjściu modelu:
 
 ```bash
-cd ..
-
-python anonymize.py \
-  --input example_data/test.short.pred.txt \
-  --output example_data/test.short.regex.txt
+python anonymize.py --input output.vllm.txt --output output.regex.txt
 ```
 
 Następnie możesz ocenić wynik hybrydowy:
@@ -77,6 +73,19 @@ Następnie możesz ocenić wynik hybrydowy:
 python evaluate_f1_agnostic.py \
   --pred example_data/test.short.regex.txt \
   --ref example_data/test.short.ref.txt
+```
+
+# Wygeneruj syntetyczne dane z anonimizowanego pliku:
+
+```bash
+python train_qlora/generate_synthetic.py --input output.regex.txt --output output.synthetic.txt
+```
+
+
+# Bash do odpalenia całego pipelinu:
+
+```bash
+./run_pipeline.sh
 ```
 
 ### Git LFS

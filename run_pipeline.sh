@@ -4,7 +4,7 @@ python train_qlora/inference_vllm.py \
     --input_file example_data/test.short.in.txt \
     --output_file output.vllm.txt \
     --batch_size 32 \
-    --adapter ../qlora_output/ || exit 1
+    --adapter train_qlora/qlora_output || exit 1
 
 
 python anonymize.py --input output.vllm.txt --output output.regex.txt || exit 1
