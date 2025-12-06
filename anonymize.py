@@ -147,18 +147,43 @@ def build_person_placeholder(text: str) -> str:
 
 def entity_placeholder(ent_label: str, text: str) -> Optional[str]:
     """Return placeholder for a spaCy entity label."""
-    if ent_label == "PERSON":
-        return None  # handled separately
-    if ent_label in ("GPE", "LOC"):
-        # GPE/LOC are cities - just accept them
+    # Normalise label for easier matching across languages/pipelines
+    label = ent_label.strip()
+    label_lower = label.lower()
+    label_upper = label.upper()
+
+    # --- PERSON-LIKE ---
+    # Standard English-style label or Polish pl_core_news_md label.
+    # We still return None here so PERSON/persName are handled
+    # by build_person_placeholder(), which distinguishes [name] vs [name] [surname].
+    if label_upper == "PERSON" or label_lower == "persname":
+        return None
+
+    # --- CITY / LOCATION-LIKE ---
+    # Generic spaCy GPE/LOC plus Polish placeName.
+    if label_upper in {"GPE", "LOC"} or label_lower == "placename":
         return "[city]"
-    if ent_label in ("FAC",):
+
+    # --- FACILITIES / ADDRESSES ---
+    if label_upper == "FAC":
         return "[address]"
-    if ent_label in ("ORG",):
+
+    # --- ORGANISATIONS ---
+    # Keep this conservative – Polish NER often tags common nouns as orgName,
+    # which can create many false positives. If you prefer more aggressive
+    # masking, you can also include `label_lower == "orgname"` here.
+    if label_upper == "ORG":
         return "[company]"
-    if ent_label in ("DATE",):
+
+    # --- DATES ---
+    # For pl_core_news_md the label is `date`; in multilingual models it is often `DATE`.
+    # We rely primarily on the hand-written regexes for DOB and written dates;
+    # this NER mapping is a fallback for cases those miss.
+    if label_upper == "DATE" or label_lower == "date":
         return "[date]"
-    if ent_label in ("NORP",):
+
+    # --- NATIONALITIES / GROUPS ---
+    if label_upper == "NORP":
         return "[ethnicity]"
     return None
 
@@ -175,7 +200,8 @@ def apply_ner(text: str, nlp: Language) -> str:
         # Skip segments already anonymized.
         if "[" in ent.text and "]" in ent.text:
             continue
-        if ent.label_ == "PERSON":
+        # pl_core_news_md uses `persName` instead of the generic `PERSON`
+        if ent.label_ == "PERSON" or ent.label_.lower() == "persname":
             repl = build_person_placeholder(ent.text)
         else:
             repl = entity_placeholder(ent.label_, ent.text)
