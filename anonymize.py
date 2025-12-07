@@ -24,6 +24,7 @@ import argparse
 import pathlib
 import re
 import sys
+from multiprocessing import Pool, cpu_count
 from typing import Callable, Iterable, List, Optional, Tuple
 
 try:
@@ -99,6 +100,23 @@ KEYWORD_PATTERNS: List[Tuple[str, re.Pattern]] = [
     # Company patterns - common business entity types
     ("[company]", re.compile(r"\b(?:FPUH|Fundacja|Gabinety|Firma|Przedsiębiorstwo|Spółka)\s+[A-ZĄĆĘŁŃÓŚŹŻ][\w\s()\-.]*", re.IGNORECASE)),
 ]
+
+
+_GLOBAL_NLP: Optional[Language] = None
+
+
+def _init_worker(model_name: str) -> None:
+    """Initializer for multiprocessing workers: load spaCy model once per process."""
+    global _GLOBAL_NLP
+    _GLOBAL_NLP = load_nlp(model_name)
+
+
+def _anonymize_worker(line: str) -> str:
+    """Worker function to anonymize a single line using the process-local spaCy model."""
+    if _GLOBAL_NLP is None:
+        raise RuntimeError("spaCy model not initialized in worker process")
+    # Strip trailing newline to keep behaviour consistent with single-process path
+    return anonymize_line(line.rstrip("\n"), _GLOBAL_NLP)
 
 
 def apply_patterns(text: str, patterns: Iterable[Tuple[str, re.Pattern]]) -> str:
@@ -231,14 +249,42 @@ def anonymize_line(line: str, nlp: Language) -> str:
     return masked
 
 
-def process_file(input_path: pathlib.Path, output_path: pathlib.Path, model_name: str, encoding: str = "utf-8") -> None:
-    """Stream the input file line-by-line and write anonymized output."""
-    nlp = load_nlp(model_name)
+def process_file(
+    input_path: pathlib.Path,
+    output_path: pathlib.Path,
+    model_name: str,
+    encoding: str = "utf-8",
+    workers: int = 1,
+) -> None:
+    """Stream the input file and write anonymized output (optionally with multiprocessing)."""
+    # Single-process (original behaviour)
+    if workers <= 1:
+        nlp = load_nlp(model_name)
+        with input_path.open("r", encoding=encoding, errors="ignore") as infile, output_path.open(
+            "w", encoding=encoding
+        ) as outfile:
+            for line in infile:
+                outfile.write(anonymize_line(line.rstrip("\n"), nlp) + "\n")
+        return
+
+    # Multiprocessing path: one spaCy model instance per worker process
+    try:
+        max_procs = cpu_count() or 1
+    except NotImplementedError:
+        max_procs = 1
+    num_workers = max(1, min(workers, max_procs))
+
     with input_path.open("r", encoding=encoding, errors="ignore") as infile, output_path.open(
         "w", encoding=encoding
     ) as outfile:
-        for line in infile:
-            outfile.write(anonymize_line(line.rstrip("\n"), nlp) + "\n")
+        with Pool(
+            processes=num_workers,
+            initializer=_init_worker,
+            initargs=(model_name,),
+        ) as pool:
+            # Use imap for streaming behaviour and better memory usage
+            for processed in pool.imap(_anonymize_worker, infile, chunksize=100):
+                outfile.write(processed + "\n")
 
 
 def parse_args() -> argparse.Namespace:
@@ -253,6 +299,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--encoding", default="utf-8", help="File encoding (default: utf-8)."
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=16,
+        help="Number of worker processes to use (1 = no multiprocessing).",
+    )
     return parser.parse_args()
 
 
@@ -265,7 +317,13 @@ def main() -> None:
         sys.stderr.write(f"Input file not found: {input_path}\n")
         sys.exit(1)
 
-    process_file(input_path, output_path, args.model, args.encoding)
+    process_file(
+        input_path=input_path,
+        output_path=output_path,
+        model_name=args.model,
+        encoding=args.encoding,
+        workers=args.workers,
+    )
     print(f"Anonymized content written to: {output_path}")
 
 

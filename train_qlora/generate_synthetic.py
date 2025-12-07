@@ -117,7 +117,6 @@ def process_file(
     input_file: str,
     output_file: str,
     adapter_path: str | None = None,
-    batch_size: int = 32,
     **generation_kwargs,
 ) -> None:
     """
@@ -127,23 +126,15 @@ def process_file(
     with open(input_file, "r", encoding="utf-8") as f:
         templates = [line.strip() for line in f if line.strip()]
 
-    print(f"Total templates: {len(templates)} | batch size: {batch_size}")
+    print(f"Total templates: {len(templates)}")
 
-    all_results: List[str] = []
-    for i in range(0, len(templates), batch_size):
-        batch = templates[i : i + batch_size]
-        batch_num = i // batch_size + 1
-        total_batches = (len(templates) + batch_size - 1) // batch_size
-
-        print(f"Processing batch {batch_num}/{total_batches} ({len(batch)} templates)...")
-
-        batch_results = generate_synthetic_texts(
-            llm,
-            batch,
-            adapter_path=adapter_path,
-            **generation_kwargs,
-        )
-        all_results.extend(batch_results)
+    # Let vLLM handle efficient dynamic batching internally
+    all_results: List[str] = generate_synthetic_texts(
+        llm,
+        templates,
+        adapter_path=adapter_path,
+        **generation_kwargs,
+    )
 
     print(f"Writing {len(all_results)} synthetic examples to: {output_file}")
     with open(output_file, "w", encoding="utf-8") as f:
@@ -202,14 +193,6 @@ def main() -> None:
         help="Path to output file for synthetic (filled) texts.",
     )
     parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=32,
-        help="Batch size (number of templates processed at once).",
-    )
-
-    # Generation arguments
-    parser.add_argument(
         "--temperature",
         type=float,
         default=0.3,
@@ -249,7 +232,6 @@ def main() -> None:
         input_file=args.input_file,
         output_file=args.output_file,
         adapter_path=args.adapter,
-        batch_size=args.batch_size,
         temperature=args.temperature,
         top_p=args.top_p,
         max_tokens=args.max_tokens,
