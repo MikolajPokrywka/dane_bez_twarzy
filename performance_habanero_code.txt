@@ -2,7 +2,7 @@ Time:
 Na 3096 zdań (cały zbiór udostępniony w pierwszy dzień)
 
 Performance regex and spacy:
-8.350 seconds total  16 proccesors CPU
+14.350 seconds total on 8 proccesors. CPU AMD Ryzen 7 7800X3D 8-Core Processor
 
 LLM anononimyzation:
 358.483 secondes GPU NVIDIA GeForce RTX 4090  3096/3096 [05:56<00:00,  8.68it/s, est. speed input: 3760.56 toks/s, output: 1794.45 toks/s
