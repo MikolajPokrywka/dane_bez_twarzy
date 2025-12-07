@@ -1,3 +1,9 @@
+# PLLumik z Lorką
+
+PLLumik z Lorką to zestaw narzędzi do automatycznej anonimizacji tekstu w języku polskim, zaprojektowany z myślą o przetwarzaniu wrażliwych danych (PESEL, adresy, numery telefonów, e‑maile, imiona i nazwiska, dane firmowe itp.). Projekt łączy dwa podejścia: klasyczną anonimizację opartą na regułach (regex + modele językowe spaCy) oraz modele językowe finetuningowane metodą QLoRA (na bazie modelu CYFRAGOVPL/Llama-PLLuM-8B-instruct z użyciem vLLM do szybkiej inferencji).
+
+Do syntetycznego podmieniania z anonimozowanych jednostek użyliśmy nie finetunowanego modelu Llama-PLLuM-8B-instruct
+
 ## Uruchomienie projektu
 
 ### Instalacja
@@ -17,7 +23,10 @@ pip install -r requirements.txt
 python -m spacy download pl_core_news_md
 ```
 
-### Przykładowe uruchomienie na danych testowych
+## Anonimizjacja oparta na regułach
+
+###  Przykładowe uruchomienie na danych testowych
+
 
 1. **Anonimizacja pliku wejściowego:**
 
@@ -37,7 +46,7 @@ python evaluate_f1_agnostic.py --pred example_data/test.short.pred.txt --ref exa
 streamlit run compare_anonymization.py
 ```
 
-### Hybrydowe podejście: model QLoRA + reguły (regex)
+## Hybrydowe podejście: model QLoRA + reguły (regex)
 
 Możesz też skorzystać z **hybrydowego podejścia**, w którym:
 - najpierw generujesz anonimizację modelem (PLLuM + adapter QLoRA),
