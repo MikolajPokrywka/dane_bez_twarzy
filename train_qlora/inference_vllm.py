@@ -8,7 +8,7 @@ import argparse
 from typing import List
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
-
+import time
 
 def create_prompt(input_text: str) -> str:
     """
@@ -115,7 +115,6 @@ def anonymize_texts(
         sampling_params,
         lora_request=lora_request,
     )
-    
     # Extract results
     results = []
     for output in outputs:
@@ -131,19 +130,17 @@ def process_file(
     input_file: str,
     output_file: str,
     adapter_path: str = None,
-    batch_size: int = 32,
     **generation_kwargs
 ):
     """
-    Process entire file in batches.
+    Process entire file (vLLM handles efficient batching internally).
     
     Args:
         llm: vLLM model
         input_file: Input file path
         output_file: Output file path
         adapter_path: Path to LoRA adapters
-        batch_size: Number of texts to process at once
-        **generation_kwargs: Additional generation parameters
+        **generation_kwargs: Additional generation parameters passed to vLLM
     """
     print(f"Processing file: {input_file}")
     
@@ -152,26 +149,17 @@ def process_file(
         lines = [line.strip() for line in f if line.strip()]
     
     print(f"Total lines: {len(lines)}")
-    print(f"Batch size: {batch_size}")
     
-    # Process in batches
-    all_results = []
-    for i in range(0, len(lines), batch_size):
-        batch = lines[i:i + batch_size]
-        batch_num = i // batch_size + 1
-        total_batches = (len(lines) + batch_size - 1) // batch_size
-        
-        print(f"Processing batch {batch_num}/{total_batches} ({len(batch)} texts)...")
-        
-        results = anonymize_texts(
-            llm,
-            batch,
-            adapter_path=adapter_path,
-            **generation_kwargs
-        )
-        
-        all_results.extend(results)
-    
+    # Let vLLM handle dynamic batching internally
+    start_time = time.time()
+    all_results = anonymize_texts(
+        llm,
+        lines,
+        adapter_path=adapter_path,
+        **generation_kwargs,
+    )
+    end_time = time.time()
+    print(f"Time taken: {end_time - start_time} seconds")
     # Save results
     with open(output_file, 'w', encoding='utf-8') as f:
         for result in all_results:
@@ -249,12 +237,6 @@ def main():
     
     # Performance parameters
     parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=32,
-        help="Batch size for processing multiple texts"
-    )
-    parser.add_argument(
         "--tensor_parallel_size",
         type=int,
         default=1,
@@ -321,7 +303,6 @@ def main():
             args.input_file,
             args.output_file,
             adapter_path=adapter_path,
-            batch_size=args.batch_size,
             **gen_kwargs
         )
     else:
